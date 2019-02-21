@@ -4,9 +4,9 @@ import theano.tensor as T
 
 from sklearn.utils import check_random_state
 
-from core import floath
-from core import cost_var
-from core import find_sigma
+from .core import floath
+from .core import cost_var
+from .core import find_sigma
 
 
 def movement_penalty(Ys, N):
@@ -40,7 +40,7 @@ def find_Ys(Xs_shared, Ys_shared, sigmas_shared, N, steps, output_dims,
 
     # Yv velocities
     Yvs_shared = []
-    zero_velocities = np.zeros((N, output_dims), dtype=floath)
+    zero_velocities = np.zeros((N, output_dims), dtype=floath) # Points only have velocities when they exist. They start at zero
     for t in range(steps):
         Yvs_shared.append(theano.shared(np.array(zero_velocities)))
 
@@ -101,7 +101,7 @@ def find_Ys(Xs_shared, Ys_shared, sigmas_shared, N, steps, output_dims,
     return Ys
 
 
-def dynamic_tsne(Xs, perplexity=30, Ys=None, output_dims=2, n_epochs=1000,
+def dynamic_tsne(Xs, IDs=None, perplexity=30, Ys=None, output_dims=2, n_epochs=1000,
                  initial_lr=2400, final_lr=200, lr_switch=250, init_stdev=1e-4,
                  sigma_iters=50, initial_momentum=0.5, final_momentum=0.8,
                  momentum_switch=250, lmbda=0.0, metric='euclidean',
@@ -117,6 +117,10 @@ def dynamic_tsne(Xs, perplexity=30, Ys=None, output_dims=2, n_epochs=1000,
         is 'precomputed', list of pairwise dissimilarity (distance) matrices. 
         Each row in `Xs[t + 1]` should correspond to the same row in `Xs[t]`, 
         for every time step t > 1.
+        
+    IDs : a list of array-likes containing an index for every point with \
+            correspondence in order between Xs[t] and IDs[t].
+        This allows for points to be removed and added over time.
     
     perplexity : float, optional (default = 30)
         Target perplexity for binary search for sigmas.
@@ -185,13 +189,16 @@ def dynamic_tsne(Xs, perplexity=30, Ys=None, output_dims=2, n_epochs=1000,
 
     steps = len(Xs)
     N = Xs[0].shape[0]
+    # TODO: use different N for every step:
+    #Ns = [x.shape[0] for x in Xs]
 
     if Ys is None:
         Y = random_state.normal(0, init_stdev, size=(N, output_dims))
         Ys = [Y]*steps
+        # TODO: make time dependend. Copy Ys[t-1], remove points which don't exist according to IDs, and add new ones.
 
     for t in range(steps):
-        if Xs[t].shape[0] != N or Ys[t].shape[0] != N:
+        if Xs[t].shape[0] != N or Ys[t].shape[0] != N: # TODO: change to use Ns
             raise Exception('Invalid datasets.')
 
         Xs[t] = np.array(Xs[t], dtype=floath)
@@ -199,16 +206,16 @@ def dynamic_tsne(Xs, perplexity=30, Ys=None, output_dims=2, n_epochs=1000,
     Xs_shared, Ys_shared, sigmas_shared = [], [], []
     for t in range(steps):
         X_shared = theano.shared(Xs[t])
-        sigma_shared = theano.shared(np.ones(N, dtype=floath))
+        sigma_shared = theano.shared(np.ones(N, dtype=floath)) # TODO: probably use Ns[t]
 
-        find_sigma(X_shared, sigma_shared, N, perplexity, sigma_iters,
+        find_sigma(X_shared, sigma_shared, N, perplexity, sigma_iters, # TODO: probably use Ns[t]
                    metric=metric, verbose=verbose)
 
         Xs_shared.append(X_shared)
         Ys_shared.append(theano.shared(np.array(Ys[t], dtype=floath)))
         sigmas_shared.append(sigma_shared)
 
-    Ys = find_Ys(Xs_shared, Ys_shared, sigmas_shared, N, steps, output_dims,
+    Ys = find_Ys(Xs_shared, Ys_shared, sigmas_shared, N, steps, output_dims, # TODO: send in IDs
                  n_epochs, initial_lr, final_lr, lr_switch, init_stdev,
                  initial_momentum, final_momentum, momentum_switch, lmbda,
                  metric, verbose)
