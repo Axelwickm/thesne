@@ -46,7 +46,7 @@ def convert_to_Xs(data, time_window, steps, max_time=None):
             
         #print(str(len(x))+"   "+str(tmin)+"  ->  "+str(tmax))
         Xs.append(np.array(x))
-        IDs.append(np.array(ids))
+        IDs.append(ids)
     return Xs, IDs
    
 def main():

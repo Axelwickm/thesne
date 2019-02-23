@@ -17,7 +17,7 @@ def movement_penalty(Ys, N):
     return T.sum(penalties)/(2*N)
 
 
-def find_Ys(Xs_shared, Ys_shared, sigmas_shared, N, steps, output_dims,
+def find_Ys(Xs_shared, Ys_shared, sigmas_shared, IDs_shared, N, steps, output_dims,
             n_epochs, initial_lr, final_lr, lr_switch, init_stdev,
             initial_momentum, final_momentum, momentum_switch, lmbda, metric,
             verbose=0):
@@ -188,34 +188,48 @@ def dynamic_tsne(Xs, IDs=None, perplexity=30, Ys=None, output_dims=2, n_epochs=1
     random_state = check_random_state(random_state)
 
     steps = len(Xs)
-    N = Xs[0].shape[0]
-    # TODO: use different N for every step:
-    #Ns = [x.shape[0] for x in Xs]
+    if IDs is None:
+        IDs = [list(range(Xs[0].shape[0]))]*steps
+
+    Ns = [x.shape[0] for x in Xs]
 
     if Ys is None:
-        Y = random_state.normal(0, init_stdev, size=(N, output_dims))
-        Ys = [Y]*steps
-        # TODO: make time dependend. Copy Ys[t-1], remove points which don't exist according to IDs, and add new ones.
+        Y = random_state.normal(0, init_stdev, size=(Ns[0], output_dims))
+        Ys = [Y]
+        for t in range(steps-1):
+            Ys.append(random_state.normal(0, init_stdev, size=(Ns[t+1], output_dims)))
+            for i in range(len(IDs[t])):
+                try:
+                    index = IDs[t+1].index(IDs[t][i])
+                except ValueError:
+                    pass
+                else:
+                    Ys[t+1][index] = Ys[t][i]
 
     for t in range(steps):
-        if Xs[t].shape[0] != N or Ys[t].shape[0] != N: # TODO: change to use Ns
+        if Xs[t].shape[0] != Ns[t] or Ys[t].shape[0] != Ns[t]:
             raise Exception('Invalid datasets.')
 
         Xs[t] = np.array(Xs[t], dtype=floath)
 
-    Xs_shared, Ys_shared, sigmas_shared = [], [], []
+    Xs_shared, Ys_shared, sigmas_shared, IDs_shared, Ns_shared = [], [], [], [], []
     for t in range(steps):
         X_shared = theano.shared(Xs[t])
-        sigma_shared = theano.shared(np.ones(N, dtype=floath)) # TODO: probably use Ns[t]
+        ID_shared = theano.shared(IDs[t])
+        N_shared = theano.shared(Ns[t])
+        sigma_shared = theano.shared(np.ones(Ns[t], dtype=floath))
 
-        find_sigma(X_shared, sigma_shared, N, perplexity, sigma_iters, # TODO: probably use Ns[t]
+        find_sigma(X_shared, sigma_shared, Ns[t], perplexity, sigma_iters,
                    metric=metric, verbose=verbose)
 
         Xs_shared.append(X_shared)
         Ys_shared.append(theano.shared(np.array(Ys[t], dtype=floath)))
         sigmas_shared.append(sigma_shared)
+        IDs_shared.append(ID_shared)
+        Ns_shared.append(N_shared)
+        
 
-    Ys = find_Ys(Xs_shared, Ys_shared, sigmas_shared, N, steps, output_dims, # TODO: send in IDs
+    Ys = find_Ys(Xs_shared, Ys_shared, sigmas_shared, IDs_shared, Ns_shared, steps, output_dims,
                  n_epochs, initial_lr, final_lr, lr_switch, init_stdev,
                  initial_momentum, final_momentum, momentum_switch, lmbda,
                  metric, verbose)
