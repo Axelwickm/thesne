@@ -9,15 +9,24 @@ from .core import cost_var
 from .core import find_sigma
 
 
-def movement_penalty(Ys, N):
+def movement_penalty(Ys, Ns, offsets):
     penalties = []
+    
+    N = theano.shared(0)
     for t in range(len(Ys) - 1):
-        penalties.append(T.sum((Ys[t] - Ys[t + 1])**2))
+        if offsets[t] != -1:
+            n = Ns[t] - offsets[t]
+            N += n
+            penalties.append(T.sum((Ys[t][offsets[t]:] - Ys[t + 1][:n])**2)/(2*n))
+        else:
+            print("Warning: No persisting data between timesteps "+str(t)+" and "+str(t+1))
+    
+    if N.eval() == 0:
+       return 0
+    return T.sum(penalties)
 
-    return T.sum(penalties)/(2*N)
 
-
-def find_Ys(Xs_shared, Ys_shared, sigmas_shared, IDs_shared, N, steps, output_dims,
+def find_Ys(Xs_shared, Ys_shared, sigmas_shared, IDs, Ns_shared, steps, output_dims,
             n_epochs, initial_lr, final_lr, lr_switch, init_stdev,
             initial_momentum, final_momentum, momentum_switch, lmbda, metric,
             verbose=0):
@@ -40,10 +49,21 @@ def find_Ys(Xs_shared, Ys_shared, sigmas_shared, IDs_shared, N, steps, output_di
 
     # Yv velocities
     Yvs_shared = []
-    zero_velocities = np.zeros((N, output_dims), dtype=floath) # Points only have velocities when they exist. They start at zero
     for t in range(steps):
+        zero_velocities = np.zeros((Ns_shared[t].get_value(), output_dims), dtype=floath)
         Yvs_shared.append(theano.shared(np.array(zero_velocities)))
-
+    
+    # Find offsets for evey layer
+    offsets = []
+    for t in range(steps-1):
+        for i in range(Ns_shared[t].get_value()):
+            if IDs[t][i] in IDs[t+1]:
+                offsets.append(i)
+                break
+        if len(offsets) != t+1:
+            offsets.append(-1)
+    offsets = theano.shared(np.array(offsets))
+                
     # Cost
     Xvars = T.fmatrices(steps)
     Yvars = T.fmatrices(steps)
@@ -54,7 +74,7 @@ def find_Ys(Xs_shared, Ys_shared, sigmas_shared, IDs_shared, N, steps, output_di
     for t in range(steps):
         c_vars.append(cost_var(Xvars[t], Yvars[t], sigmas_vars[t], metric))
 
-    cost = T.sum(c_vars) + lmbda_var*movement_penalty(Yvars, N)
+    cost = T.sum(c_vars) + lmbda_var*movement_penalty(Yvars, Ns_shared, offsets)
 
     # Setting update for Ys velocities
     grad_Y = T.grad(cost, Yvars)
@@ -205,6 +225,8 @@ def dynamic_tsne(Xs, IDs=None, perplexity=30, Ys=None, output_dims=2, n_epochs=1
                     pass
                 else:
                     Ys[t+1][index] = Ys[t][i]
+    
+    # TODO: rearrange data to make sure all the persisting data are at the end and beginning of adjacent timesteps.
 
     for t in range(steps):
         if Xs[t].shape[0] != Ns[t] or Ys[t].shape[0] != Ns[t]:
@@ -215,7 +237,6 @@ def dynamic_tsne(Xs, IDs=None, perplexity=30, Ys=None, output_dims=2, n_epochs=1
     Xs_shared, Ys_shared, sigmas_shared, IDs_shared, Ns_shared = [], [], [], [], []
     for t in range(steps):
         X_shared = theano.shared(Xs[t])
-        ID_shared = theano.shared(IDs[t])
         N_shared = theano.shared(Ns[t])
         sigma_shared = theano.shared(np.ones(Ns[t], dtype=floath))
 
@@ -225,11 +246,10 @@ def dynamic_tsne(Xs, IDs=None, perplexity=30, Ys=None, output_dims=2, n_epochs=1
         Xs_shared.append(X_shared)
         Ys_shared.append(theano.shared(np.array(Ys[t], dtype=floath)))
         sigmas_shared.append(sigma_shared)
-        IDs_shared.append(ID_shared)
         Ns_shared.append(N_shared)
         
 
-    Ys = find_Ys(Xs_shared, Ys_shared, sigmas_shared, IDs_shared, Ns_shared, steps, output_dims,
+    Ys = find_Ys(Xs_shared, Ys_shared, sigmas_shared, IDs, Ns_shared, steps, output_dims,
                  n_epochs, initial_lr, final_lr, lr_switch, init_stdev,
                  initial_momentum, final_momentum, momentum_switch, lmbda,
                  metric, verbose)

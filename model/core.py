@@ -90,11 +90,12 @@ def find_sigma(X_shared, sigma_shared, N, perplexity, sigma_iters,
 
     for i in range(sigma_iters):
         e = update_intervals()
-        update_sigma()
+        s = update_sigma()
         if verbose:
             print('Iteration: {0}.'.format(i+1))
             print('Perplexities in [{0:.4f}, {1:.4f}].'.format(np.exp(e.min()),
                   np.exp(e.max())))
+            print('Highest sigma: {0:.4f}\n'.format(s.max()))
 
     if np.any(np.isnan(np.exp(e))):
         raise Exception('Invalid sigmas. The perplexity is probably too low.')

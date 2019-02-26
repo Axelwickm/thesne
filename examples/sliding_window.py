@@ -18,7 +18,7 @@ def generate_data(n, dt):
         t = dt*random.random()
         p["id"] = i
         p["time"] = t
-        p["analyzed_data"] = [random.random() * 3, 2, random.random() * 0.2, t / dt * 3, 3 * t / dt * t / dt * t / dt - 0.5 * t / dt * t / dt - t / dt + 2]
+        p["analyzed_data"] = [random.random() * 0.5, 0.8, random.random() * 0.2, t / dt, (3 * t / dt * t / dt * t / dt - 0.5 * t / dt * t / dt - t / dt + 2)/5]
         data.append(p)
 
     return data
@@ -52,11 +52,12 @@ def convert_to_Xs(data, time_window, steps, max_time=None):
 def main():
     seed = 0
     
-    data = generate_data(1500, 300)
+    data = generate_data(200, 100)
     
-    Xs, IDs = convert_to_Xs(data, 30, 60, max_time=300)
+    # FIXME: This can create empty Xs, which crashes the program
+    Xs, IDs = convert_to_Xs(data, 30, 5, max_time=100)  
     
-    Ys = dynamic_tsne(Xs, IDs, perplexity=70, lmbda=0.1, verbose=1, sigma_iters=50,
+    Ys = dynamic_tsne(Xs, IDs, perplexity=20, initial_lr=250, final_lr=200, lmbda=0.1, verbose=1, sigma_iters=50,
                       random_state=seed)
 
 if __name__ == "__main__":
