@@ -9,6 +9,8 @@ import os
 
 from thesne.model.dynamic_tsne import dynamic_tsne
 
+from thesne.examples import plot
+
 def generate_data(n, dt):
     """ Generate n entries over dt days """
     data = []
@@ -57,8 +59,11 @@ def main():
     # FIXME: This can create empty Xs, which crashes the program
     Xs, IDs = convert_to_Xs(data, 30, 5, max_time=100)  
     
-    Ys = dynamic_tsne(Xs, IDs, perplexity=20, initial_lr=250, final_lr=200, lmbda=0.1, verbose=1, sigma_iters=50,
-                      random_state=seed)
+    Ys = dynamic_tsne(Xs, IDs, perplexity=30, n_epochs=2000, initial_lr=150, final_lr=50, lmbda=0.1, verbose=1, sigma_iters=50,
+                      initial_momentum = 0.3, random_state=seed)
+        
+    for Y in Ys:
+        plot.plot(Y)
 
 if __name__ == "__main__":
     main()

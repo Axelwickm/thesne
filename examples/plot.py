@@ -17,6 +17,9 @@ rgb_colors = plt.colors.hsv_to_rgb(np.array(hsv_colors).reshape(10, 1, 3))
 colors = plt.colors.ListedColormap(rgb_colors.reshape(10, 3))
 
 
-def plot(Y, labels):
-    pylab.scatter(Y[:, 0], Y[:, 1], s=30, c=labels, cmap=colors, linewidth=0)
+def plot(Y, labels=None):
+    if labels is None:
+        pylab.scatter(Y[:, 0], Y[:, 1], s=30, linewidth=0)
+    else:
+        pylab.scatter(Y[:, 0], Y[:, 1], s=30, c=labels, cmap=colors, linewidth=0)
     pylab.show()
