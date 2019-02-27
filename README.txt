@@ -11,6 +11,11 @@ Dynamic t-SNE is an adaptation of t-SNE for sequences of time-dependent
 datasets. It introduces a controllable trade-off between temporal coherence
 and projection (embedding) reliability. For more details, please see [2].
 
+This fork is backwards compatible, and removes the assumption
+that every X in Xs is the same size. By also sending in a list linking the datapoint 
+IDs to their index in X, Dynamic t-sne knows which high dimensional datapoint
+corresponds to which over time.
+
 If your use of this code results in a publication, please cite (at least) the
 original paper by Laurens van der Maaten [1].
 
