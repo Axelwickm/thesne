@@ -240,6 +240,8 @@ def dynamic_tsne(Xs, IDs=None, perplexity=30, Ys=None, output_dims=2, n_epochs=1
         N_shared = theano.shared(Ns[t])
         sigma_shared = theano.shared(np.ones(Ns[t], dtype=floath))
 
+        if verbose:
+            print("Finding sigmas for step {0}".format(t))
         find_sigma(X_shared, sigma_shared, Ns[t], perplexity, sigma_iters,
                    metric=metric, verbose=verbose)
 
