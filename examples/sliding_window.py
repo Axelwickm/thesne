@@ -5,10 +5,8 @@ import random
 import bisect
 
 import os
-#os.environ["THEANO_FLAGS"] = "device=cuda0,floatX=float32"
 
 from thesne.model.dynamic_tsne import dynamic_tsne
-
 from thesne.examples import plot
 
 def generate_data(n, dt):

@@ -4,9 +4,9 @@ import theano.tensor as T
 
 from sklearn.utils import check_random_state
 
-from .core import floath
-from .core import cost_var
-from .core import find_sigma
+from core import floath
+from core import cost_var
+from core import find_sigma
 
 
 def movement_penalty(Ys, Ns, offsets):
@@ -139,7 +139,8 @@ def dynamic_tsne(Xs, IDs=None, perplexity=30, Ys=None, output_dims=2, n_epochs=1
         for every time step t > 1.
         
     IDs : a list of array-likes containing an index for every point with \
-            correspondence in order between Xs[t] and IDs[t].
+            correspondence in order between Xs[t] and IDs[t]. The points \
+            have to be sorted over time.
         This allows for points to be removed and added over time.
     
     perplexity : float, optional (default = 30)
@@ -225,8 +226,6 @@ def dynamic_tsne(Xs, IDs=None, perplexity=30, Ys=None, output_dims=2, n_epochs=1
                     pass
                 else:
                     Ys[t+1][index] = Ys[t][i]
-    
-    # TODO: rearrange data to make sure all the persisting data are at the end and beginning of adjacent timesteps.
 
     for t in range(steps):
         if Xs[t].shape[0] != Ns[t] or Ys[t].shape[0] != Ns[t]:
